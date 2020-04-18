@@ -1,0 +1,15 @@
+{
+    "pluginName": "刘大壮",
+    "description": "刘大壮专属加油工具包",
+    "homepage": "https://github.com/vst93/doutu-uToolsPlugin",
+    "author": "lc",
+    "main": "index.html",
+    "version": "0.1.0",
+    "features": [
+        {
+            "code": "aa",
+            "explain": "转换",
+            "cmds":["test","jitwxs"]
+        }
+    ]
+}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>傻狗刘大壮</title>
+    <style type="text/css">
+        textarea:focus{
+            outline: none;
+        }
+        .source, .output{
+            height: 200px;
+            width: 100%;
+            border-top: 1px solid #ccc;
+        }
+        .source{
+            margin-top: 20px;
+        }
+        .source textarea, .output textarea{
+            width: 100%;
+            height: 100%;
+            border: none;
+            font-size: 22px;
+        }
+        .btnGroups{
+            height: 50px;
+            display: flex;
+            align-items: center;
+        }
+        button{
+            border: 1px solid #d9d9d9;
+            color: #1890ff;
+            background: #e6f7ff;
+            border-color: #91d5ff
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="source">
+        <textarea rows="3" placeholder="请输入内容"> </textarea> 
+    </div>
+     <div class="btnGroups">
+        <button id="sqlBtn">sql转换</button>
+        <input type="checkbox" name="options" id="date" value="@Data">@Data<br>
+        <input type="checkbox" name="options" id="builder" value="@Builder">@Builder<br>
+    </div>
+    <div class="output">
+        <textarea rows="5" name=""> </textarea>
+    </div>
+   
+
+</body>
+<script type="text/javascript">
+    window.onload = function() {
+        var sqlBtn = document.getElementById('sqlBtn');
+        var source = document.querySelector('.source textarea')
+        var output = document.querySelector('.output textarea');
+        sqlBtn.onclick = function() {
+            var tabInfo = source.value.replace(/[\n\r]/g,'$').replace(/`/g,'').replace(/_.{1}/g,function(m){return m.toUpperCase()}).replace(/_/g,'');
+            var heads = tabInfo.split('(')[0].trim().split(/\s+/);
+            var head = heads[heads.length - 1];
+            head = head.slice(0, 1).toUpperCase() + head.slice(1);
+            var pattrn = /(?<=\().*(?=\))/;
+            var body = pattrn.exec(tabInfo);
+            body = body[0].trim();
+            var   javaBean = "public class " + head +" {\n";
+            // 获取@Date或者@Builder的单选状态
+            var radios = document.getElementsByName('options');
+            var importStr = ''
+            var otherStr = ''
+            var flag = 0
+            for(item of radios) {
+                if(item.checked){
+                    flag++;
+                    if(item.value === '@Data') {
+
+                        importStr += 'import lombok.Data;\n'
+                        otherStr = '@Data\n'
+                    } else if(item.value === '@Builder') {
+                        otherStr += '@Builder\n@NoArgsConstructor\n@AllArgsConstructor\n';
+                        importStr += 'import lombok.Builder;\nimport lombok.AllArgsConstructor;\nimport lombok.NoArgsConstructor;\n'
+                    }
+                }
+            }
+            if(importStr !== '' ) {
+                importStr += '\n'
+            }
+            // "id bigint(20) NOT NULL,  type tinyint(4) DEFAULT NULL COMMENT '任务类型',  code tinyint(4) DEFAULT NULL COMMENT '执行结果, 0 成功',  size int(11) DEFAULT NULL COMMENT '处理数据量',  timeCost int(11) DEFAULT NULL COMMENT '执行耗时',  remark varchar(255) DEFAULT NULL COMMENT '执行备注',  createdDate datetime DEFAULT NULL COMMENT '执行开始时间',  PRIMARY KEY (id)"
+            javaBean = importStr + otherStr +javaBean;
+            var feilds = body.split('$');
+            feilds.shift();
+            feilds.pop();
+            var kes = ['PRIMARY','UNIQUE','KEY'];
+            feilds.forEach(function(value,index,array){
+                value = value.trim();
+                var tmp = /(?<=COMMENT).*/.exec(value);
+                var comment = '';
+                if (tmp ) {
+                 comment = /(?<=').*(?=')/.exec( tmp[0].trim())
+
+                }  
+                var vals = value.split(/\s+/);
+                if(kes.indexOf(vals[0].toUpperCase()) == -1){
+                    if(comment){
+                        javaBean = `${javaBean}    /**
+     * ${comment}
+     */ `
+                    }
+
+                    javaBean = `${javaBean}
+    private ${dbType(vals[1])} ${vals[0]};
+` 
+                    if(dbType(vals[1]) === 'LocalDateTime'){
+                        flag==0? javaBean = "\n" +javaBean: javaBean
+                        flag++;
+                        javaBean = 'import java.time.LocalDateTime\n' + javaBean;
+                    } else if (dbType(vals[1]) === 'Date') {
+                        flag==0? javaBean = "\n" +javaBean: javaBean
+                        flag++;
+                        javaBean = 'import java.util.Date;\n' + javaBean;
+                    } else if (dbType(vals[1]) === 'BigDecimal') {
+                        flag==0? javaBean = "\n" +javaBean: javaBean
+                        flag++;
+                        javaBean = ' import java.math.BigDecimal;\n' + javaBean;
+                    }
+                }
+
+            });
+            javaBean = javaBean + "}";
+            // $('#javaBean').val(javaBean);
+            output.innerHTML = javaBean;
+        };
+
+        var dbType = function(t){
+            if(! t){
+                return "String";
+            }
+            if(t.toUpperCase().trim().indexOf("DATE")!=-1 || t.toUpperCase().trim().indexOf("TIME") != -1){
+                return "Date";
+            }
+
+            if(t.toUpperCase().trim().indexOf("CHAR")!=-1 || t.toUpperCase().trim().indexOf("TEXT")!=-1 || t.toUpperCase().trim().indexOf("LOB")!=-1){
+                return "String";
+            }
+
+            if(t.toUpperCase().trim().indexOf("INT")!=-1){
+                return "Integer";
+            }
+
+            if(t.toUpperCase().trim().indexOf("FLOAT")!=-1){
+                return "Float";
+            }
+
+            if(t.toUpperCase().trim().indexOf("DOUBLE")!=-1){
+                return "Double";
+            }
+
+            if(t.toUpperCase().trim().indexOf("DECIMAL")!=-1 || t.toUpperCase().trim().indexOf("NUM")!=-1){
+                return "BigDecimal";
+            }
+
+            return "String";
+        }
+    }
+</script>
+</html>
